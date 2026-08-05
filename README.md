@@ -14,6 +14,10 @@ end to end. What the agent is *good at* lives outside the code, in
 
 `706` lines · `7` files · `0` dependencies · `3` of a planned `5` days built
 
+![Sarathi building fib.py end to end: write_file, then bash to run and verify it](assets/preview.svg)
+
+*A real transcript from [`demos/day2_build.py`](demos/day2_build.py) — the model writes a file, runs it, and reports the verified result, gated the whole way by [`security.Policy`](sarathi/security.py).*
+
 ---
 
 ## The loop

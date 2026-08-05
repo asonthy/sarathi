@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 448" font-family="SF Mono, Menlo, Consolas, monospace">
+  <defs>
+    <clipPath id="round"><rect x="0" y="0" width="900" height="448" rx="14"/></clipPath>
+  </defs>
+  <g clip-path="url(#round)">
+    <rect x="0" y="0" width="900" height="448" fill="#161511"/>
+    <rect x="0" y="0" width="900" height="40" fill="#1E1C17"/>
+    <circle cx="24" cy="20" r="6" fill="#E5564C"/>
+    <circle cx="44" cy="20" r="6" fill="#E5B93E"/>
+    <circle cx="64" cy="20" r="6" fill="#3EB259"/>
+    <text x="450" y="24.5" fill="#837F74" font-size="12.5" text-anchor="middle">demos/day2_build.py — zsh</text>
+  </g>
+  <rect x="0.5" y="0.5" width="899" height="447" rx="14" fill="none" stroke="#2B2820" stroke-width="1"/>
+
+  <g font-size="14" fill="#EDE6CF">
+    <text x="28" y="70"><tspan fill="#D9A441">$</tspan> python3 -m demos.day2_build</text>
+
+    <text x="28" y="106" fill="#837F74">workdir: /tmp/sarathi-day2-na4mhn7b</text>
+
+    <text x="28" y="134"><tspan fill="#D9A441" font-weight="600">user: </tspan>Create fib.py with an iterative fib(n), a __main__ printing</text>
+    <text x="72" y="155">fib(30), run it and confirm the output is 832040</text>
+
+    <text x="28" y="191"><tspan fill="#6EC6F1">assistant -&gt; tool call:</tspan> write_file({'path': 'fib.py', 'content': '...'})</text>
+    <text x="28" y="212"><tspan fill="#8FBF86">tool result -&gt; write_file:</tspan> Wrote 213 chars to fib.py</text>
+
+    <text x="28" y="248"><tspan fill="#6EC6F1">assistant -&gt; tool call:</tspan> bash({'command': 'python3 fib.py'})</text>
+    <text x="28" y="269"><tspan fill="#8FBF86">tool result -&gt; bash:</tspan> 832040</text>
+
+    <text x="28" y="305"><tspan fill="#D9A441" font-weight="600">assistant: </tspan>I have created fib.py with the iterative Fibonacci function</text>
+    <text x="72" y="326">and ran it. The output is 832040, confirming fib(30) was calculated</text>
+    <text x="72" y="347">correctly.</text>
+
+    <text x="28" y="392" font-size="12.5" fill="#4E4B41">— gated the whole way by security.Policy: reads free, writes and bash</text>
+    <text x="28" y="409" font-size="12.5" fill="#4E4B41">checked, $HOME deletion blocked structurally.</text>
+  </g>
+</svg>
