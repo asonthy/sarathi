@@ -43,7 +43,7 @@ def main():
     print(f"user: {task}")
 
     tools = {t.name: t for t in core_tools(workdir)}
-    policy = Policy("yolo")
+    policy = Policy("yolo", workdir=workdir)
     messages = [{"role": "user", "text": task}]
     answer = run_loop(
         provider.DEFAULT_MODEL,

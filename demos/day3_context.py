@@ -92,7 +92,7 @@ def main():
     print(f"user: {args.task}")
 
     tools = build_tools(workdir)
-    policy = Policy("yolo")
+    policy = Policy("yolo", workdir=workdir)
     system = memory.build_system_prompt(workdir, extra=skills.catalog_prompt(workdir))
     messages = [{"role": "user", "text": args.task}]
 

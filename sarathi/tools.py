@@ -136,11 +136,17 @@ def core_tools(workdir):
     )
     def bash(command, timeout="120"):
         seconds = float(timeout)
+        # HOME is pinned to the sandbox so `~`/$HOME expansion -- by the
+        # shell itself, or by anything the command runs that consults HOME
+        # (python's os.path.expanduser, git, npm, ...) -- can't reach the
+        # real home directory, even via indirection a static check misses.
+        env = dict(os.environ, HOME=root)
         try:
             proc = subprocess.run(
                 command,
                 shell=True,
                 cwd=root,
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=seconds,
