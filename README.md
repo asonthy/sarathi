@@ -1,63 +1,115 @@
 # Sarathi
 
-A small, sharp coding agent harness — built from scratch, one layer at a
-time, to make every piece of an agent loop legible: the turn-taking engine,
-the tool sandbox, the security policy, context compaction, durable memory,
-and on-demand skills.
+*The smallest agent harness that still has a floor under it.*
 
-No framework, no hidden magic. Sarathi talks to Gemini over raw HTTP and
-implements everything else — tool dispatch, retries, path jailing, deny
-rules, transcript summarization — in plain, readable Python with zero
-third-party dependencies.
+706 lines, seven files, zero dependencies. A turn-taking loop, sandboxed
+tools, a security policy, context compaction, durable memory, and on-demand
+skills — built one day at a time, each day committed once its demo runs
+end to end. What the agent is *good at* lives outside the code, in
+`SARATHI.md` and the skills you drop in `skills/`.
 
 > सारथी (*sārathi*) — Sanskrit for "charioteer." Krishna's role for Arjuna
-> in the Bhagavad Gita: not the one fighting the battle, but the one holding
-> the reins.
+> in the Bhagavad Gita: not the one fighting the battle, but the one
+> holding the reins.
 
-## Why
+`706` lines · `7` files · `0` dependencies · `3` of a planned `5` days built
 
-Most agent frameworks bury the interesting parts — the turn loop, the tool
-schema, the sandbox boundary — under abstraction. Sarathi does the opposite:
-every file is short enough to read in one sitting, and every design
-decision is explained in the module's own docstring, not in a separate doc
-that drifts out of sync.
+---
 
-## Architecture
+## The loop
 
-```
-                     ┌───────────────────────┐
-   user task ──────▶ │        loop.py         │ ◀────── on_event (transcript)
-                     │  run_loop(): alternate  │
-                     │  model turns and tool   │
-                     │  turns until the model  │
-                     │  stops calling tools    │
-                     └──────────┬─────────────┘
-                                │
-              ┌─────────────────┼─────────────────┐
-              ▼                 ▼                 ▼
-      ┌───────────────┐ ┌───────────────┐ ┌────────────────┐
-      │  provider.py   │ │  security.py  │ │    tools.py     │
-      │  Gemini wire    │ │  Policy.check  │ │  read/write/edit│
-      │  format, retry, │ │  gates every   │ │  /bash/list/grep│
-      │  backoff        │ │  tool call     │ │  path-jailed    │
-      └───────────────┘ └───────────────┘ └────────────────┘
+Every coding agent is built around the same eleven lines. Everything else —
+tools, policy, memory, context — is scaffolding bolted onto this.
 
-      before each turn, before_turn hooks in:
-      ┌───────────────┐ ┌───────────────┐ ┌────────────────┐
-      │  context.py    │ │  memory.py     │ │   skills.py     │
-      │  compact long   │ │  SARATHI.md —  │ │  load a SKILL.md│
-      │  transcripts    │ │  durable notes │ │  on demand      │
-      └───────────────┘ └───────────────┘ └────────────────┘
+```python
+# loop.py, the idea unabridged
+for _ in range(max_turns):
+    reply = provider.complete(model, system, messages, specs)
+    messages.append(reply)
+    if not reply["tool_calls"]:
+        return reply["text"]
+    for call in reply["tool_calls"]:
+        result = _run_tool(tools, before_tool, call)
+        messages.append({"role": "tool", "name": call["name"], "text": result})
 ```
 
-`loop.py` never imports `tools.py` or `security.py` directly — it takes
-`tools`, `before_tool`, and `before_turn` as plain arguments. Every other
-module is an interchangeable plug-in built by whoever assembles the demo.
+**Think.** The model reads the conversation and decides: answer, or act.
+**Act.** Six sandboxed tools — read, write, edit, bash, list, grep — are
+enough to build real software.
+**Observe.** Results, errors included, go back into the conversation. A
+tool that raises never takes the loop down with it — its failure becomes
+something the model reads and reacts to, same as any other outcome.
+
+## Why small
+
+Most of what ships as an "agent harness" is business around an agent —
+chat UI, billing, vendor auth. Sarathi is only the agent. Capability isn't
+supposed to live in more code: it lives in `SARATHI.md` (durable,
+project-specific memory folded into every system prompt) and in
+`skills/*/SKILL.md` (instruction bundles the agent loads by name, on
+demand, so the system prompt stays cheap until a skill actually earns its
+place). Add a skill file and the agent gets better at something — no code
+change required.
+
+## Anatomy
+
+Readable in one sitting, one idea per file.
+
+| File | Lines | Idea |
+|---|---:|---|
+| [`provider.py`](sarathi/provider.py) | 112 | One narrow doorway to Gemini's wire format — retries, backoff, thought-signature echo. Swap models by rewriting this one file. |
+| [`loop.py`](sarathi/loop.py) | 64 | The agentic loop itself. Everything else is scaffolding around it. |
+| [`tools.py`](sarathi/tools.py) | 208 | Six sandboxed tools, plus a `@tool` decorator that derives a JSON schema straight from a function's own signature. |
+| [`security.py`](sarathi/security.py) | 153 | Deny rules, permission modes (`yolo` / `safe` / `read-only`), and a structural (not regex-only) check that a delete can't reach `$HOME`. |
+| [`context.py`](sarathi/context.py) | 66 | Token budget and compaction — long tasks survive a finite context window. |
+| [`memory.py`](sarathi/memory.py) | 45 | `SARATHI.md` — one file convention *is* the whole memory system. |
+| [`skills.py`](sarathi/skills.py) | 58 | Drop a `SKILL.md` in a folder; the agent gains a capability on demand. |
+
+`session.py`, `subagent.py`, and `fleet.py` — durable resumable sessions,
+sub-agent delegation, and multi-agent orchestration — are days 4 and 5,
+not yet built here.
+
+## The build log
+
+Each day added one layer, committed once its demo ran end to end. The
+prompts each day's code was written from are in [`prompts/`](prompts/).
+
+| Day | What it added | Demo |
+|---|---|---|
+| 1 | The loop and the Gemini provider — a model that converses and calls its first tool. | [`demos/day1_dice.py`](demos/day1_dice.py) |
+| 2 | Sandboxed tools and the security policy — builds and runs real code, gated, in a jail. | [`demos/day2_build.py`](demos/day2_build.py) |
+| 3 | Context compaction, durable memory, and skills — survives long tasks, remembers across sessions, learns from markdown. | [`demos/day3_context.py`](demos/day3_context.py) |
+| 4 | *Not yet built* — durable sessions, crash recovery, sub-agents. | — |
+| 5 | *Not yet built* — fleet orchestration, a real CLI. | — |
+
+A later hardening pass ([`b9cdba6`](../../commit/b9cdba6)) tightened the
+day-2 `$HOME`-deletion check from a regex guess to a tokenized,
+path-resolved one, backed by a runtime `HOME` override as a second,
+independent layer.
+
+## Security model
+
+Every tool call passes through `Policy.check()` before it runs:
+
+1. **Deny patterns are a floor, not a mode.** `sudo`, `mkfs`, `dd if=`,
+   `curl | sh`, `git push --force`, and raw writes to block devices are
+   blocked no matter what mode you're in.
+2. **`$HOME` deletion is checked structurally, not textually.**
+   `_deletes_home` tokenizes each shell segment with `shlex`, resolves
+   whatever path a delete-capable command targets against the real
+   filesystem, and blocks only when that path is `$HOME` — or falls
+   outside the sandbox under it — so routine cleanup inside the project
+   directory still works even when that directory happens to live under
+   `$HOME`.
+3. **Reads are always free.** `read_file`, `list_files`, `grep` never need
+   approval.
+4. **Everything else depends on mode:** `yolo` runs it, `read-only` blocks
+   it, `safe` asks an `approver` callback for a yes.
 
 ## Quickstart
 
-Requires Python 3.9+ and a Gemini API key. No dependencies to install — the
-whole harness is standard library.
+Python 3.9+ and a Gemini API key. Nothing to `pip install` — the whole
+harness is standard library.
 
 ```bash
 git clone git@github.com:asonthy/sarathi.git
@@ -70,39 +122,8 @@ python3 -m demos.day3_context "your task here"       # + context, memory, skills
 ```
 
 Each demo prints the transcript live — every assistant turn, every tool
-call, every result — so you can watch the loop reason and act step by step.
-
-## Core pieces
-
-| Module | What it owns |
-|---|---|
-| [`provider.py`](sarathi/provider.py) | The only file that speaks Gemini's wire format. Translates a model-agnostic `{"role", "text", ...}` message shape to/from `generateContent`, retries transient failures with exponential backoff, and echoes back the `thoughtSignature` Gemini 3 needs to keep hidden reasoning state coherent. |
-| [`loop.py`](sarathi/loop.py) | The turn-taking engine: alternates model turns and tool turns until the model stops calling tools or `max_turns` is hit. A tool that raises never takes down the loop — its failure becomes a tool result the model can react to. |
-| [`tools.py`](sarathi/tools.py) | The `@tool` decorator turns a plain function into a callable with a JSON schema derived from its own signature, so the two can't drift apart. `core_tools(workdir)` hands out six tools — `read_file`, `write_file`, `edit_file`, `bash`, `list_files`, `grep` — every path resolved and checked against the workdir's real path before it touches disk. |
-| [`security.py`](sarathi/security.py) | `Policy.check()` gates every tool call. A denied `bash` pattern is a floor no mode can lift. Above that, reads are always free; `mode` decides whether anything else runs unchecked (`yolo`), never (`read-only`), or only with a human's yes (`safe`). Home-directory deletion gets its own tokenized, path-resolved check — not just regex — so it survives flag reordering and indirection that a text pattern would miss. |
-| [`context.py`](sarathi/context.py) | Before each turn, checks whether the transcript still fits a token budget. If not, summarizes everything but the last few turns into one dense message via the model itself, dropping any orphaned tool result left at the seam. |
-| [`memory.py`](sarathi/memory.py) | `SARATHI.md` is a project's standing memory, folded into the system prompt of every conversation over that directory — so a fresh session already knows what a prior one learned. |
-| [`skills.py`](sarathi/skills.py) | A skill is a directory with a `SKILL.md`. The agent sees a one-line catalog entry by default and pulls in the full instructions through a tool only when a task calls for it, keeping the system prompt cheap until a skill earns its place. |
-
-## Security model
-
-Every tool call passes through `Policy.check()` before it runs:
-
-1. **Deny patterns are absolute.** `sudo`, `mkfs`, `dd if=`, `curl | sh`,
-   `git push --force`, and raw writes to block devices are blocked in every
-   mode.
-2. **Home-directory deletion is checked structurally, not textually.**
-   `_deletes_home` tokenizes each shell segment, resolves whatever path a
-   delete-capable command targets against the real filesystem, and blocks
-   only when that path is `$HOME` or falls outside the sandbox under it —
-   so routine cleanup inside the project directory still works, even when
-   that directory happens to live under `$HOME`. `tools.bash` pairs this
-   with a runtime `HOME` override pinned to the sandbox as a second,
-   independent layer.
-3. **Reads are always free**: `read_file`, `list_files`, `grep` never need
-   approval.
-4. **Everything else depends on mode**: `yolo` runs it, `read-only` blocks
-   it, `safe` asks an `approver` callback for a yes.
+call, every result — so you can watch the loop think and act step by
+step.
 
 ## Project layout
 
@@ -136,13 +157,9 @@ sarathi/
   one-line catalog by default; memory is only loaded if `SARATHI.md`
   exists; context is only compacted once it actually overflows budget.
 - **One file, one responsibility.** `provider.py` is the only file that
-  knows Gemini's wire format. `loop.py` doesn't know what a tool is beyond
-  its `run`/`spec` shape. Each module docstring states the concept it
-  embodies and the constraint it's built to satisfy.
+  knows Gemini's wire format; `loop.py` doesn't know what a tool is beyond
+  its `run`/`spec` shape.
 
-## Status
+---
 
-Built incrementally, day by day, each day's code committed once its demo
-runs end to end. Currently Gemini-only — the neutral message shape in
-`provider.py` is designed to make a second backend a matter of adding a
-sibling module, not restructuring the loop.
+*Sarathi — distilled from the same idea as Odysseus, built independently, one day at a time.*
